@@ -1,0 +1,138 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "existingVirtualNetworkName": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the name of the Virtual Network"
+      }
+    },
+    "existingVirtualNetworkRG": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the name of the Virtual Network Resource group"
+      }
+    },
+    "loadBalancerName": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the name of the load balancer"
+      }
+    },
+    "loadBalancerSKU": {
+      "type": "string",
+      "metadata": {
+        "description": "This is the SKU of the load balancer"
+      }
+    },
+    "SubnetName": {
+      "type": "string",
+      "metadata": {
+        "description": "Subnet Name"
+      }
+    },
+    "FrontEndIP": {
+      "type": "string",
+      "metadata": {
+        "description": "FrontEnd IP Address"
+      }
+    },
+    "PortandProbeArray": {
+      "type": "array",
+      "metadata": {
+        "description": "Array for Probes, Ports and ILB rules parameters"
+      }
+    }
+  },
+  "variables": {
+    "vnetID": "[resourceId(parameters('existingVirtualNetworkRG'), 'Microsoft.Network/virtualNetworks/', parameters('existingVirtualNetworkName'))]",
+    "subnetRef": "[concat(variables('vnetID'),'/subnets/',parameters('subnetName'))]",
+    "lbID": "[resourceId('Microsoft.Network/loadBalancers',parameters('loadBalancerName'))]",
+    "LbFrontEnd": "[concat(parameters('loadBalancerName'), '-FrontEnd')]",
+    "Lbprobe": "[concat(parameters('loadBalancerName'), '-Probe-')]",
+    "lbBackEnd": "[concat(parameters('loadBalancerName'), '-BackEnd-')]",
+    "probeId": "[concat(variables('lbID'), '/probes/')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/loadBalancers",
+      "name": "[parameters('loadBalancerName')]",
+      "apiVersion": "2020-05-01",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "CostCenter": "costcenter"
+      },
+      "sku": {
+        "name": "[parameters('loadBalancerSKU')]"
+      },
+      "properties": {
+        "frontendIPConfigurations": [
+          {
+            "name":"[variables('LbFrontEnd')]",
+            "properties": {
+              "subnet": {
+                "id": "[variables('subnetRef')]"
+              },
+              "privateIPAddress": "[parameters('FrontEndIP')]",
+              "privateIPAllocationMethod": "Static"
+            }
+          }
+        ],
+        "copy":[
+          {
+            "name": "probes",
+            "count": "[length(parameters('PortandProbeArray'))]",
+            "input":{
+              "name": "[concat(variables('Lbprobe'), parameters('PortandProbeArray')[copyIndex('probes')].port)]",
+            "properties":{
+               "port": "[parameters('PortandProbeArray')[copyIndex('probes')].port]",
+               "intervalInSeconds": "[parameters('PortandProbeArray')[copyIndex('probes')].intervalSec]",
+               "numberOfProbes": "[parameters('PortandProbeArray')[copyIndex('probes')].numberOfProbes]",
+               "protocol": "[parameters('PortandProbeArray')[copyIndex('probes')].probeProtocol]",
+               "requestPath": "[parameters('PortandProbeArray')[copyIndex('probes')].probePath]"
+              }
+            }
+          },
+          {
+            "name": "loadBalancingRules",
+            "count": "[length(parameters('PortandProbeArray'))]",
+            "input": {
+              "name": "[concat(parameters('loadBalancerName'), '-Rule-', parameters('PortandProbeArray')[copyIndex('loadBalancingRules')].port)]",
+              "properties":{
+                "frontendIPConfiguration":{
+                  "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancerName')), '/frontendIpConfigurations/', variables('LbFrontEnd'))]"
+                },
+                "backendAddressPool": {
+                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancerName')), '/backendAddressPools/', variables('lbBackEnd'), parameters('PortandProbeArray')[copyIndex('loadBalancingRules')].port)]"
+                },
+                "probe":{
+                  "id": "[concat(variables('probeId'), variables('Lbprobe'), parameters('PortandProbeArray')[copyIndex('loadBalancingRules')].port)]"
+                },
+                "protocol": "[parameters('PortandProbeArray')[copyIndex('loadBalancingRules')].ruleProtocol]",
+                "frontendPort": "[parameters('PortandProbeArray')[copyIndex('loadBalancingRules')].port]",
+                "backendPort": "[parameters('PortandProbeArray')[copyIndex('loadBalancingRules')].port]",
+                "idleTimeoutInMinutes": "[parameters('PortandProbeArray')[copyIndex('loadBalancingRules')].idleTimeoutMin]"
+              }
+            }
+          },
+          {
+            "name":"backendAddressPools",
+            "count": "[length(parameters('PortandProbeArray'))]",
+            "input": {
+              "name": "[concat(variables('LbBackEnd'), parameters('PortandProbeArray')[copyIndex('backendAddressPools')].port)]"
+            }
+          }
+        ]
+      }
+    }
+    
+  ],
+  "outputs": {
+    "lbName": {
+      "type": "string",
+      "value": "[parameters('loadBalancerName')]"
+    }
+  }
+  
+}

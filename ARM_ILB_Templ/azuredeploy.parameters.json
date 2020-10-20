@@ -1,0 +1,64 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+      "FrontEndIP": {    
+          "value": <front end IP>
+      },
+      "existingVirtualNetworkRG":{
+          "value": <VNET resource group>
+      },
+      "existingVirtualNetworkName":{
+          "value": <VNET name>
+      },
+      "loadBalancerSKU":{
+          "value": "Standard"
+      },
+      "SubnetName":{
+          "value": "Web"
+      },
+      "loadBalancerName": {    
+          "value": <ILB name>
+      },
+      "PortandProbeArray": {
+          "value": [
+              {
+                  "port": "9091",
+                  "probePath": "/swagger",
+                  "probeProtocol": "http",
+                  "ruleProtocol": "TCP",
+                  "idleTimeOutMin": "15",
+                  "intervalSec": "15",
+                  "numberOfProbes": "2"
+              },
+              {
+                  "port": "9092",
+                  "probePath": "/swagger",
+                  "probeProtocol": "http",
+                  "ruleProtocol": "TCP",
+                  "idleTimeOutMin": "15",
+                  "intervalSec": "15",
+                  "numberOfProbes": "2"
+              },
+              {
+                   "port": "9094",
+                   "probePath": "/swagger",
+                   "probeProtocol": "http",
+                   "ruleProtocol": "TCP",
+                   "idleTimeOutMin": "15",
+                   "intervalSec": "15",
+                   "numberOfProbes": "2"
+                },
+                {
+                    "port": "9096",
+                    "probePath": "/swagger",
+                    "probeProtocol": "http",
+                    "ruleProtocol": "TCP",
+                    "idleTimeOutMin": "15",
+                    "intervalSec": "15",
+                    "numberOfProbes": "2"
+                }
+            ]
+        }
+    }
+}
